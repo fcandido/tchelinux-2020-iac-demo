@@ -1,0 +1,50 @@
+---
+- name: Install Docker
+  hosts: vm
+  become: yes
+  tasks:
+  - name: Installs docker 
+    apt:
+      name: ["docker.io"]
+      state: latest
+      update_cache: true
+
+  - name: Start docker service
+    service:
+      name: docker
+      state: started
+
+- name: start nginx container
+  hosts: vm
+  become: yes
+  tasks:
+  - name: create data directory
+    file:
+      path: /opt/data
+      state: directory
+      owner: ubuntu
+      group: ubuntu
+      mode: '0755'
+
+  - name: get vm info
+    shell: /usr/bin/hostnamectl
+    register: hostnamectl
+    tags: copy_template
+
+  - name: get docker client version
+    shell: "/usr/bin/docker version "
+    register: docker_version
+    tags: copy_template
+
+  - name: copy hello world
+    template:
+      src: index.html.j2
+      dest: /opt/data/index.html
+      owner: ubuntu
+      group: ubuntu
+      mode: '0644'
+    tags: copy_template
+
+  - name: start container
+    shell: "/usr/bin/docker run -d --name tchelinux_nginx -v /opt/data:/usr/share/nginx/html -p 80:80 --restart always nginx:latest"
+    tags: start_nginx
